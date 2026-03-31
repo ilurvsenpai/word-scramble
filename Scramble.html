@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Scramble Pro</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="game-container">
+  <h1>🧩 Word Scramble</h1>
+
+  <div class="top-bar">
+    <span id="timer">⏱ Ready</span>
+    <span id="lives">❤️ 3</span>
+    <span id="score">⭐ 0</span>
+  </div>
+
+  <p class="scrambled-word">Loading...</p>
+
+  <input type="text" id="guessInput" placeholder="Type your guess">
+
+  <div class="buttons">
+    <button onclick="checkGuess()">Submit</button>
+    <button onclick="newWord()">Skip</button>
+  </div>
+
+  <select id="difficulty" onchange="setDifficulty()">
+    <option value="easy">Easy</option>
+    <option value="medium" selected>Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+
+  <button onclick="toggleTheme()">🌙 Toggle Theme</button>
+
+  <p id="message"></p>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
