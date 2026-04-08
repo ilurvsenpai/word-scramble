@@ -1,6 +1,6 @@
 // -------------------------------
 // Word Scramble Game - Full Updated Script
-// Unique words, level progression, progress bar, unlimited words
+// Unique words, level progression, strict length per level, unlimited words
 // -------------------------------
 
 let currentWord = "";
@@ -60,10 +60,12 @@ function updateLevelBar() {
 }
 
 // -------------------------------
-// Preload words without repeats
+// Preload words without repeats, strict length
 async function preloadWords(level) {
-  const minLen = level === "easy" ? 3 : level === "medium" ? 6 : 9;
-  const maxLen = level === "easy" ? 5 : level === "medium" ? 8 : 20;
+  let minLen, maxLen;
+  if(level === "easy"){ minLen = 3; maxLen = 5; }
+  else if(level === "medium"){ minLen = 6; maxLen = 8; }
+  else if(level === "hard"){ minLen = 9; maxLen = 20; }
 
   try {
     const res = await fetch(`https://random-word-api.herokuapp.com/word?number=${WORD_BATCH_SIZE}`);
@@ -75,15 +77,13 @@ async function preloadWords(level) {
       }
     });
   } catch {
-    for(let i=0;i<WORD_BATCH_SIZE;i++){
-      const fallback = fallbackWords[level][Math.floor(Math.random()*fallbackWords[level].length)];
-      if(!usedWordsAllLevels.includes(fallback)) wordQueue.push(fallback);
-    }
+    const filtered = fallbackWords[level].filter(w => w.length >= minLen && w.length <= maxLen && !usedWordsAllLevels.includes(w));
+    filtered.forEach(w => wordQueue.push(w));
   }
 
   // Fallback if queue is empty
   if(wordQueue.length === 0){
-    const options = fallbackWords[level].filter(w => !usedWordsAllLevels.includes(w));
+    const options = fallbackWords[level].filter(w => w.length >= minLen && w.length <= maxLen && !usedWordsAllLevels.includes(w));
     if(options.length > 0) wordQueue.push(options[Math.floor(Math.random()*options.length)]);
   }
 }
@@ -98,7 +98,6 @@ async function newWord() {
   wordDisplay.textContent = "Loading...";
   wordDisplay.classList.add("loading");
 
-  // Preload if low
   if(wordQueue.length < 3) await preloadWords(level);
 
   let word;
@@ -107,9 +106,10 @@ async function newWord() {
     if(!word) break;
   } while(usedWordsAllLevels.includes(word));
 
-  // Fallback if still empty
   if(!word){
-    const options = fallbackWords[level].filter(w => !usedWordsAllLevels.includes(w));
+    const minLen = level === "easy" ? 3 : level === "medium" ? 6 : 9;
+    const maxLen = level === "easy" ? 5 : level === "medium" ? 8 : 20;
+    const options = fallbackWords[level].filter(w => w.length >= minLen && w.length <= maxLen && !usedWordsAllLevels.includes(w));
     word = options[Math.floor(Math.random()*options.length)];
   }
 
