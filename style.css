@@ -63,7 +63,7 @@ input {
   100% { transform: translateX(0); }
 }
 
-button, select {
+button {
   padding: 8px;
   margin: 5px;
   cursor: pointer;
@@ -134,4 +134,20 @@ button, select {
 
 @keyframes scaleIn {
   to { transform: scale(1); }
+}
+
+.level-bar-container {
+  width: 100%;
+  background: #555;
+  border-radius: 6px;
+  height: 12px;
+  margin-bottom: 15px;
+}
+
+.level-bar {
+  width: 0%;
+  height: 100%;
+  background: #ffce00;
+  border-radius: 6px;
+  transition: width 0.3s;
 }

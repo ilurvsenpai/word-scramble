@@ -32,6 +32,18 @@ function updateUI() {
   document.getElementById("message").textContent = `Level: ${level.toUpperCase()} | Correct in level: ${correctInLevel}/5`;
 }
 
+// Update level progress bar
+function updateLevelBar() {
+  const bar = document.getElementById("levelBar");
+  const percent = (correctInLevel / 5) * 100;
+  bar.style.width = percent + "%";
+
+  // Change color per level
+  if (level === "easy") bar.style.background = "#4CAF50";       // green
+  else if (level === "medium") bar.style.background = "#FFA500"; // orange
+  else if (level === "hard") bar.style.background = "#FF4500";   // red
+}
+
 // Create new word
 function newWord() {
   clearInterval(timer);
@@ -60,6 +72,7 @@ function newWord() {
 
   startTimer();
   updateUI();
+  updateLevelBar();
 }
 
 // Timer
@@ -90,12 +103,14 @@ function checkGuess() {
     score++;
     correctInLevel++;
     updateUI();
+    updateLevelBar();
 
     // Level up
     if (correctInLevel >= 5) {
       if (level === "easy") level = "medium";
       else if (level === "medium") level = "hard";
       correctInLevel = 0;
+      updateLevelBar();
       document.getElementById("message").textContent = `🎉 Level Up! Now ${level.toUpperCase()}`;
     }
 
@@ -130,10 +145,11 @@ function resetGame() {
   correctInLevel = 0;
   usedWords = [];
   updateUI();
+  updateLevelBar();
   newWord();
 }
 
-// Restart game
+// Restart game from popup or Enter key
 function restartGame() {
   const overlay = document.querySelector(".popup-overlay");
   if (overlay) document.body.removeChild(overlay);
@@ -241,4 +257,5 @@ function launchConfetti() {
 
 // Initialize
 updateUI();
+updateLevelBar();
 newWord();
