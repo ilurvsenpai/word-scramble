@@ -11,7 +11,8 @@ let score = 0;
 let lives = 3;
 let timeLeft = 10;
 let timer;
-let difficulty = "medium";
+let level = "easy";            // start at easy
+let correctInLevel = 0;        // correct answers in current level
 let timerStarted = false;
 let usedWords = [];
 
@@ -28,6 +29,7 @@ function shuffle(word) {
 function updateUI() {
   document.getElementById("score").textContent = "⭐ " + score;
   document.getElementById("lives").textContent = "❤️ " + lives;
+  document.getElementById("message").textContent = `Level: ${level.toUpperCase()} | Correct in level: ${correctInLevel}/5`;
 }
 
 // Create new word
@@ -35,14 +37,11 @@ function newWord() {
   clearInterval(timer);
   timerStarted = false;
 
-  // Reset usedWords if all words used
-  if (usedWords.length >= wordSets[difficulty].length) usedWords = [];
-
   // Pick unused word
   let word;
   let attempts = 0;
   do {
-    word = wordSets[difficulty][Math.floor(Math.random() * wordSets[difficulty].length)];
+    word = wordSets[level][Math.floor(Math.random() * wordSets[level].length)];
     attempts++;
     if (attempts > 50) break;
   } while (usedWords.includes(word));
@@ -59,17 +58,15 @@ function newWord() {
   input.disabled = false;
   input.focus();
 
-  document.getElementById("message").textContent =
-    `Difficulty: ${difficulty} (${currentWord.length} letters)`;
-
   startTimer();
+  updateUI();
 }
 
 // Timer
 function startTimer() {
   clearInterval(timer);
   timerStarted = true;
-  timeLeft = difficulty === "easy" ? 12 : difficulty === "hard" ? 8 : 10;
+  timeLeft = level === "easy" ? 12 : level === "hard" ? 8 : 10;
   document.getElementById("timer").textContent = "⏱ " + timeLeft;
 
   timer = setInterval(() => {
@@ -91,8 +88,17 @@ function checkGuess() {
 
   if (guess === currentWord) {
     score++;
+    correctInLevel++;
     updateUI();
-    document.getElementById("message").textContent = "✅ Correct!";
+
+    // Level up
+    if (correctInLevel >= 5) {
+      if (level === "easy") level = "medium";
+      else if (level === "medium") level = "hard";
+      correctInLevel = 0;
+      document.getElementById("message").textContent = `🎉 Level Up! Now ${level.toUpperCase()}`;
+    }
+
     setTimeout(newWord, 800);
   } else {
     input.classList.add("shake");
@@ -120,17 +126,76 @@ function loseLife(msg) {
 function resetGame() {
   score = 0;
   lives = 3;
+  level = "easy";
+  correctInLevel = 0;
   usedWords = [];
   updateUI();
   newWord();
 }
 
-// Set difficulty
-function setDifficulty() {
-  difficulty = document.getElementById("difficulty").value;
-  usedWords = [];
-  newWord();
+// Restart game
+function restartGame() {
+  const overlay = document.querySelector(".popup-overlay");
+  if (overlay) document.body.removeChild(overlay);
+
+  const input = document.getElementById("guessInput");
+  input.disabled = false;
+
+  resetGame();
 }
+
+// Game over popup
+function showGameOver() {
+  clearInterval(timer);
+
+  const input = document.getElementById("guessInput");
+  input.disabled = true;
+
+  const highScoreKey = `highscore`;
+  const prevHigh = localStorage.getItem(highScoreKey) || 0;
+
+  if (score > prevHigh) {
+    localStorage.setItem(highScoreKey, score);
+    launchConfetti();
+  }
+
+  const overlay = document.createElement("div");
+  overlay.className = "popup-overlay";
+
+  const card = document.createElement("div");
+  card.className = "popup-card";
+  card.innerHTML = `
+    <h2>Game Over!</h2>
+    <p>Your Score: ${score}</p>
+    <p>High Score: ${Math.max(score, prevHigh)}</p>
+    <button id="restartBtn">Play Again</button>
+  `;
+
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  document.getElementById("restartBtn").addEventListener("click", restartGame);
+}
+
+// Input triggers timer start
+document.getElementById("guessInput").addEventListener("input", () => {
+  if (!timerStarted) startTimer();
+});
+
+// Enter key handler
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const overlay = document.querySelector(".popup-overlay");
+    if (overlay) restartGame();
+    else checkGuess();
+  }
+});
+
+// Pause/resume timer on tab visibility
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) clearInterval(timer);
+  else if (timerStarted) startTimer();
+});
 
 // Toggle theme
 function toggleTheme() {
@@ -173,75 +238,6 @@ function launchConfetti() {
     requestAnimationFrame(frame);
   })();
 }
-
-// Game over popup
-function showGameOver() {
-  clearInterval(timer);
-
-  // disable input
-  const input = document.getElementById("guessInput");
-  input.disabled = true;
-
-  const highScoreKey = `highscore_${difficulty}`;
-  const prevHigh = localStorage.getItem(highScoreKey) || 0;
-
-  if (score > prevHigh) {
-    localStorage.setItem(highScoreKey, score);
-    launchConfetti();
-  }
-
-  const overlay = document.createElement("div");
-  overlay.className = "popup-overlay";
-
-  const card = document.createElement("div");
-  card.className = "popup-card";
-  card.innerHTML = `
-    <h2>Game Over!</h2>
-    <p>Your Score: ${score}</p>
-    <p>High Score (${difficulty}): ${Math.max(score, prevHigh)}</p>
-    <button id="restartBtn">Play Again</button>
-  `;
-
-  overlay.appendChild(card);
-  document.body.appendChild(overlay);
-
-  document.getElementById("restartBtn").addEventListener("click", restartGame);
-}
-
-// Restart function
-function restartGame() {
-  const overlay = document.querySelector(".popup-overlay");
-  if (overlay) document.body.removeChild(overlay);
-
-  const input = document.getElementById("guessInput");
-  input.disabled = false;
-
-  resetGame();
-}
-
-// Input triggers timer start
-document.getElementById("guessInput").addEventListener("input", (e) => {
-  if (!timerStarted) startTimer();
-});
-
-// Enter key handler
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    const overlay = document.querySelector(".popup-overlay");
-
-    if (overlay) {
-      restartGame(); // restart if game over
-    } else {
-      checkGuess(); // normal gameplay
-    }
-  }
-});
-
-// Pause/resume timer on tab visibility
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearInterval(timer);
-  else if (timerStarted) startTimer();
-});
 
 // Initialize
 updateUI();
