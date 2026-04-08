@@ -56,6 +56,7 @@ function newWord() {
 
   const input = document.getElementById("guessInput");
   input.value = "";
+  input.disabled = false;
   input.focus();
 
   document.getElementById("message").textContent =
@@ -109,7 +110,7 @@ function loseLife(msg) {
   document.getElementById("message").textContent = msg;
 
   if (lives <= 0) {
-    showGameOver(); // show popup instead of new word
+    showGameOver();
   } else {
     setTimeout(newWord, 800);
   }
@@ -177,6 +178,10 @@ function launchConfetti() {
 function showGameOver() {
   clearInterval(timer);
 
+  // disable input
+  const input = document.getElementById("guessInput");
+  input.disabled = true;
+
   const highScoreKey = `highscore_${difficulty}`;
   const prevHigh = localStorage.getItem(highScoreKey) || 0;
 
@@ -200,10 +205,18 @@ function showGameOver() {
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  document.getElementById("restartBtn").addEventListener("click", () => {
-    document.body.removeChild(overlay);
-    resetGame();
-  });
+  document.getElementById("restartBtn").addEventListener("click", restartGame);
+}
+
+// Restart function
+function restartGame() {
+  const overlay = document.querySelector(".popup-overlay");
+  if (overlay) document.body.removeChild(overlay);
+
+  const input = document.getElementById("guessInput");
+  input.disabled = false;
+
+  resetGame();
 }
 
 // Input triggers timer start
@@ -211,18 +224,15 @@ document.getElementById("guessInput").addEventListener("input", (e) => {
   if (!timerStarted) startTimer();
 });
 
-// Submit on Enter
-document.getElementById("guessInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") checkGuess();
-});
-
-// Restart game on Enter if Game Over popup is visible
+// Enter key handler
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const overlay = document.querySelector(".popup-overlay");
+
     if (overlay) {
-      document.body.removeChild(overlay);
-      resetGame();
+      restartGame(); // restart if game over
+    } else {
+      checkGuess(); // normal gameplay
     }
   }
 });
