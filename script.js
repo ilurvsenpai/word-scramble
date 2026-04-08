@@ -1,4 +1,4 @@
-// Fallback word lists
+// Word lists
 const wordSets = {
   easy: ["cat","dog","sun","book","tree","fish","hat","pen","cup","ball"],
   medium: ["javascript","keyboard","internet","computer","browser","picture","monster","holiday"],
@@ -6,12 +6,12 @@ const wordSets = {
 };
 
 let currentWord = "";
+let scrambledWord = "";
 let score = 0;
 let lives = 3;
 let timeLeft = 10;
 let timer;
 let difficulty = "medium";
-
 let timerStarted = false;
 let usedWords = [];
 
@@ -30,57 +30,29 @@ function updateUI() {
   document.getElementById("lives").textContent = "❤️ " + lives;
 }
 
-// Fetch random word with proper difficulty
-async function fetchWord() {
-  let word = "";
-  let attempts = 0;
-
-  let minLen = 3, maxLen = 100;
-  if (difficulty === "easy") { minLen = 3; maxLen = 5; }
-  else if (difficulty === "medium") { minLen = 6; maxLen = 8; }
-  else if (difficulty === "hard") { minLen = 9; maxLen = 20; }
-
-  while (attempts < 20) {
-    attempts++;
-    try {
-      const res = await fetch("https://random-word-api.herokuapp.com/word");
-      const data = await res.json();
-      word = data[0].toLowerCase();
-      if (/^[a-z]+$/.test(word) && word.length >= minLen && word.length <= maxLen) {
-        return word;
-      }
-    } catch {
-      break;
-    }
-  }
-
-  // fallback
-  const filteredWords = wordSets[difficulty].filter(w => w.length >= minLen && w.length <= maxLen);
-  return filteredWords[Math.floor(Math.random() * filteredWords.length)];
-}
-
 // Create new word
-async function newWord() {
+function newWord() {
   clearInterval(timer);
   timerStarted = false;
 
-  const wordDisplay = document.querySelector(".scrambled-word");
-  wordDisplay.textContent = "Loading...";
-  wordDisplay.classList.add("loading");
+  // Reset usedWords if all words used
+  if (usedWords.length >= wordSets[difficulty].length) usedWords = [];
 
+  // Pick unused word
   let word;
   let attempts = 0;
   do {
-    word = await fetchWord();
+    word = wordSets[difficulty][Math.floor(Math.random() * wordSets[difficulty].length)];
     attempts++;
-    if (attempts > 20) break;
+    if (attempts > 50) break;
   } while (usedWords.includes(word));
 
   currentWord = word;
   usedWords.push(currentWord);
+  scrambledWord = shuffle(currentWord);
 
-  wordDisplay.textContent = shuffle(currentWord);
-  wordDisplay.classList.remove("loading");
+  const wordDisplay = document.querySelector(".scrambled-word");
+  wordDisplay.textContent = scrambledWord;
 
   const input = document.getElementById("guessInput");
   input.value = "";
@@ -89,11 +61,13 @@ async function newWord() {
   document.getElementById("message").textContent =
     `Difficulty: ${difficulty} (${currentWord.length} letters)`;
 
-  document.getElementById("timer").textContent = "⏱ Ready";
+  startTimer();
 }
 
 // Timer
 function startTimer() {
+  clearInterval(timer);
+  timerStarted = true;
   timeLeft = difficulty === "easy" ? 12 : difficulty === "hard" ? 8 : 10;
   document.getElementById("timer").textContent = "⏱ " + timeLeft;
 
@@ -107,47 +81,35 @@ function startTimer() {
   }, 1000);
 }
 
-// Input triggers timer
-document.getElementById("guessInput").addEventListener("input", (e) => {
-  if (e.target.value.length > 0 && !timerStarted) {
-    timerStarted = true;
-    startTimer();
-  }
-});
-
-// Enter submits
-document.getElementById("guessInput").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    const value = e.target.value.trim();
-    if (value !== "") checkGuess();
-  }
-});
-
 // Check guess
 function checkGuess() {
   const input = document.getElementById("guessInput");
-  const guess = input.value.toLowerCase();
+  const guess = input.value.toLowerCase().trim();
+
+  if (!guess) return;
 
   if (guess === currentWord) {
     score++;
+    updateUI();
     document.getElementById("message").textContent = "✅ Correct!";
-    newWord();
+    setTimeout(newWord, 800);
   } else {
     input.classList.add("shake");
     setTimeout(() => input.classList.remove("shake"), 300);
     loseLife("❌ Wrong!");
   }
 
-  updateUI();
+  input.value = "";
 }
 
 // Lose life
 function loseLife(msg) {
   lives--;
+  updateUI();
   document.getElementById("message").textContent = msg;
 
   if (lives <= 0) showGameOver();
-  else newWord();
+  else setTimeout(newWord, 800);
 }
 
 // Reset game
@@ -159,25 +121,19 @@ function resetGame() {
   newWord();
 }
 
-// Difficulty
+// Set difficulty
 function setDifficulty() {
   difficulty = document.getElementById("difficulty").value;
   usedWords = [];
   newWord();
 }
 
-// Theme toggle
+// Toggle theme
 function toggleTheme() {
   document.body.classList.toggle("light");
 }
 
-// Pause/resume timer
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearInterval(timer);
-  else if (timerStarted) startTimer();
-});
-
-// Confetti animation
+// Confetti
 function launchConfetti() {
   const duration = 2000;
   const end = Date.now() + duration;
@@ -214,7 +170,7 @@ function launchConfetti() {
   })();
 }
 
-// Game Over popup
+// Game over popup
 function showGameOver() {
   clearInterval(timer);
 
@@ -246,6 +202,22 @@ function showGameOver() {
     resetGame();
   });
 }
+
+// Input triggers timer start
+document.getElementById("guessInput").addEventListener("input", (e) => {
+  if (!timerStarted) startTimer();
+});
+
+// Submit on Enter
+document.getElementById("guessInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") checkGuess();
+});
+
+// Pause/resume timer on tab visibility
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) clearInterval(timer);
+  else if (timerStarted) startTimer();
+});
 
 // Initialize
 updateUI();
