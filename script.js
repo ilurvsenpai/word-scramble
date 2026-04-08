@@ -108,8 +108,11 @@ function loseLife(msg) {
   updateUI();
   document.getElementById("message").textContent = msg;
 
-  if (lives <= 0) showGameOver();
-  else setTimeout(newWord, 800);
+  if (lives <= 0) {
+    showGameOver(); // show popup instead of new word
+  } else {
+    setTimeout(newWord, 800);
+  }
 }
 
 // Reset game
@@ -213,17 +216,7 @@ document.getElementById("guessInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") checkGuess();
 });
 
-// Pause/resume timer on tab visibility
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearInterval(timer);
-  else if (timerStarted) startTimer();
-});
-
-// Initialize
-updateUI();
-newWord();
-
-// Restart on Enter key during Game Over
+// Restart game on Enter if Game Over popup is visible
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const overlay = document.querySelector(".popup-overlay");
@@ -233,3 +226,13 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+// Pause/resume timer on tab visibility
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) clearInterval(timer);
+  else if (timerStarted) startTimer();
+});
+
+// Initialize
+updateUI();
+newWord();
