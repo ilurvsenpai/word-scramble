@@ -1,9 +1,4 @@
-// Word lists
-const wordSets = {
-  easy: ["cat","dog","sun","book","tree","fish","hat","pen","cup","ball"],
-  medium: ["javascript","keyboard","internet","computer","browser","picture","monster","holiday"],
-  hard: ["algorithm","programming","development","application","encyclopedia","microscope"]
-};
+// Unlimited word game script
 
 let currentWord = "";
 let scrambledWord = "";
@@ -16,6 +11,13 @@ let correctInLevel = 0;        // correct answers in current level
 let timerStarted = false;
 let usedWords = [];
 
+// Fallback small lists in case API fails
+const fallbackWords = {
+  easy: ["cat","dog","sun","book","tree","fish","hat","pen","cup","ball"],
+  medium: ["javascript","keyboard","internet","computer","browser","picture"],
+  hard: ["algorithm","programming","development","application","microscope"]
+};
+
 // Shuffle letters
 function shuffle(word) {
   let shuffled;
@@ -26,10 +28,11 @@ function shuffle(word) {
 }
 
 // Update UI
-function updateUI() {
+function updateUI(msg="") {
   document.getElementById("score").textContent = "⭐ " + score;
   document.getElementById("lives").textContent = "❤️ " + lives;
-  document.getElementById("message").textContent = `Level: ${level.toUpperCase()} | Correct in level: ${correctInLevel}/5`;
+  if(msg) document.getElementById("message").textContent = msg;
+  else document.getElementById("message").textContent = `Level: ${level.toUpperCase()} | Correct in level: ${correctInLevel}/5`;
 }
 
 // Update level progress bar
@@ -44,26 +47,44 @@ function updateLevelBar() {
   else if (level === "hard") bar.style.background = "#FF4500";   // red
 }
 
+// Fetch a random word from API
+async function fetchRandomWord() {
+  const minLen = level === "easy" ? 3 : level === "medium" ? 6 : 9;
+  const maxLen = level === "easy" ? 5 : level === "medium" ? 8 : 20;
+
+  try {
+    const res = await fetch("https://random-word-api.herokuapp.com/word?number=1");
+    const data = await res.json();
+    const word = data[0].toLowerCase();
+    if(/^[a-z]+$/.test(word) && word.length >= minLen && word.length <= maxLen) {
+      if(!usedWords.includes(word)) return word;
+    }
+  } catch {
+    // API failed
+  }
+
+  // fallback word
+  const available = fallbackWords[level].filter(w => !usedWords.includes(w));
+  if(available.length === 0) usedWords = []; // reset fallback used words
+  return available[Math.floor(Math.random() * fallbackWords[level].length)];
+}
+
 // Create new word
-function newWord() {
+async function newWord() {
   clearInterval(timer);
   timerStarted = false;
 
-  // Pick unused word
-  let word;
-  let attempts = 0;
-  do {
-    word = wordSets[level][Math.floor(Math.random() * wordSets[level].length)];
-    attempts++;
-    if (attempts > 50) break;
-  } while (usedWords.includes(word));
-
-  currentWord = word;
-  usedWords.push(currentWord);
-  scrambledWord = shuffle(currentWord);
-
   const wordDisplay = document.querySelector(".scrambled-word");
+  wordDisplay.textContent = "Loading...";
+  wordDisplay.classList.add("loading");
+
+  let word = await fetchRandomWord();
+  currentWord = word;
+  usedWords.push(word);
+
+  scrambledWord = shuffle(currentWord);
   wordDisplay.textContent = scrambledWord;
+  wordDisplay.classList.remove("loading");
 
   const input = document.getElementById("guessInput");
   input.value = "";
@@ -96,22 +117,21 @@ function startTimer() {
 function checkGuess() {
   const input = document.getElementById("guessInput");
   const guess = input.value.toLowerCase().trim();
+  if(!guess) return;
 
-  if (!guess) return;
-
-  if (guess === currentWord) {
+  if(guess === currentWord) {
     score++;
     correctInLevel++;
     updateUI();
     updateLevelBar();
 
     // Level up
-    if (correctInLevel >= 5) {
-      if (level === "easy") level = "medium";
-      else if (level === "medium") level = "hard";
+    if(correctInLevel >= 5) {
+      if(level === "easy") level = "medium";
+      else if(level === "medium") level = "hard";
       correctInLevel = 0;
       updateLevelBar();
-      document.getElementById("message").textContent = `🎉 Level Up! Now ${level.toUpperCase()}`;
+      updateUI(`🎉 Level Up! Now ${level.toUpperCase()}`);
     }
 
     setTimeout(newWord, 800);
@@ -127,14 +147,9 @@ function checkGuess() {
 // Lose life
 function loseLife(msg) {
   lives--;
-  updateUI();
-  document.getElementById("message").textContent = msg;
-
-  if (lives <= 0) {
-    showGameOver();
-  } else {
-    setTimeout(newWord, 800);
-  }
+  updateUI(msg);
+  if(lives <= 0) showGameOver();
+  else setTimeout(newWord, 800);
 }
 
 // Reset game
@@ -170,7 +185,7 @@ function showGameOver() {
   const highScoreKey = `highscore`;
   const prevHigh = localStorage.getItem(highScoreKey) || 0;
 
-  if (score > prevHigh) {
+  if(score > prevHigh) {
     localStorage.setItem(highScoreKey, score);
     launchConfetti();
   }
@@ -195,22 +210,22 @@ function showGameOver() {
 
 // Input triggers timer start
 document.getElementById("guessInput").addEventListener("input", () => {
-  if (!timerStarted) startTimer();
+  if(!timerStarted) startTimer();
 });
 
 // Enter key handler
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+  if(e.key === "Enter") {
     const overlay = document.querySelector(".popup-overlay");
-    if (overlay) restartGame();
+    if(overlay) restartGame();
     else checkGuess();
   }
 });
 
 // Pause/resume timer on tab visibility
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearInterval(timer);
-  else if (timerStarted) startTimer();
+  if(document.hidden) clearInterval(timer);
+  else if(timerStarted) startTimer();
 });
 
 // Toggle theme
@@ -226,10 +241,10 @@ function launchConfetti() {
 
   (function frame() {
     const timeLeft = end - Date.now();
-    if (timeLeft <= 0) return;
+    if(timeLeft <= 0) return;
 
     const particleCount = 5 + Math.random() * 5;
-    for (let i = 0; i < particleCount; i++) {
+    for(let i=0;i<particleCount;i++){
       const confetti = document.createElement("div");
       confetti.style = `
         position: fixed;
@@ -245,11 +260,8 @@ function launchConfetti() {
         transition: transform 1s linear, opacity 1s linear;
       `;
       document.body.appendChild(confetti);
-      setTimeout(() => {
-        confetti.style.transform = `translateY(${window.innerHeight}px) rotate(${Math.random()*720}deg)`;
-        confetti.style.opacity = 0;
-      }, 10);
-      setTimeout(() => document.body.removeChild(confetti), 1100);
+      setTimeout(()=>{confetti.style.transform=`translateY(${window.innerHeight}px) rotate(${Math.random()*720}deg)`; confetti.style.opacity=0},10);
+      setTimeout(()=>document.body.removeChild(confetti),1100);
     }
     requestAnimationFrame(frame);
   })();
