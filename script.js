@@ -222,3 +222,14 @@ document.addEventListener("visibilitychange", () => {
 // Initialize
 updateUI();
 newWord();
+
+// Restart on Enter key during Game Over
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const overlay = document.querySelector(".popup-overlay");
+    if (overlay) {
+      document.body.removeChild(overlay);
+      resetGame();
+    }
+  }
+});
