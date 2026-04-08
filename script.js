@@ -1,6 +1,6 @@
 // -------------------------------
 // Word Scramble Game Script
-// Instant start + unlimited words + levels
+// Levels, unlimited words, instant start, progress bar
 // -------------------------------
 
 let currentWord = "";
@@ -13,7 +13,7 @@ let timer;
 let timeLeft = 10;
 let timerStarted = false;
 let usedWords = [];
-let wordQueue = [];           
+let wordQueue = [];
 const WORD_BATCH_SIZE = 15;
 
 // Fallback word lists
@@ -39,7 +39,27 @@ function updateUI(msg = "") {
   document.getElementById("score").textContent = "⭐ " + score;
   document.getElementById("lives").textContent = "❤️ " + lives;
   if(msg) document.getElementById("message").textContent = msg;
-  else document.getElementById("message").textContent = `Level: ${level.toUpperCase()} | Correct: ${correctInLevel}/5`;
+  else document.getElementById("message").textContent = `Guess the word!`;
+  updateLevelBar();
+}
+
+// -------------------------------
+// Update Level Progress Bar
+function updateLevelBar() {
+  const levelText = document.getElementById("levelText");
+  const levelBar = document.getElementById("levelBar");
+
+  // Text
+  levelText.textContent = `Level: ${level.toUpperCase()} | Correct: ${correctInLevel}/5`;
+
+  // Width percentage
+  const percent = (correctInLevel / 5) * 100;
+  levelBar.style.width = percent + "%";
+
+  // Color based on level
+  if(level === "easy") levelBar.style.background = "#4CAF50"; // green
+  else if(level === "medium") levelBar.style.background = "#FFA500"; // orange
+  else if(level === "hard") levelBar.style.background = "#FF4500"; // red
 }
 
 // -------------------------------
@@ -135,12 +155,14 @@ function checkGuess() {
     score++;
     correctInLevel++;
     updateUI();
+    updateLevelBar();
 
     if(correctInLevel >= 5){
       if(level === "easy") level = "medium";
       else if(level === "medium") level = "hard";
       correctInLevel = 0;
       updateUI(`🎉 Level Up! Now ${level.toUpperCase()}`);
+      updateLevelBar();
     }
 
     setTimeout(newWord, 500);
@@ -172,6 +194,7 @@ function resetGame() {
   usedWords = [];
   wordQueue = [];
   updateUI();
+  updateLevelBar();
   newWord();
 }
 
@@ -278,5 +301,6 @@ function launchConfetti(){
 // -------------------------------
 // Initialize game
 updateUI();
+updateLevelBar();
 preloadWords(level);
 newWord();
