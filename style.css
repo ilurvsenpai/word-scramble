@@ -19,7 +19,7 @@ body.light {
   background: #2c2c3e;
   padding: 20px;
   border-radius: 12px;
-  width: 320px;
+  width: 340px;
 }
 
 body.light .game-container {
@@ -72,6 +72,34 @@ button {
 #message {
   margin-top: 10px;
   min-height: 20px;
+}
+
+/* Level progress bar */
+.level-container {
+  margin-bottom: 15px;
+}
+
+.level-bar-bg {
+  width: 100%;
+  height: 12px;
+  background: #555;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.level-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #4CAF50;
+  transition: width 0.3s;
+  border-radius: 6px;
+}
+
+.level-container p {
+  font-size: 14px;
+  margin: 0;
+  text-align: center;
 }
 
 /* Popup styles */
@@ -134,20 +162,4 @@ button {
 
 @keyframes scaleIn {
   to { transform: scale(1); }
-}
-
-.level-bar-container {
-  width: 100%;
-  background: #555;
-  border-radius: 6px;
-  height: 12px;
-  margin-bottom: 15px;
-}
-
-.level-bar {
-  width: 0%;
-  height: 100%;
-  background: #ffce00;
-  border-radius: 6px;
-  transition: width 0.3s;
 }
