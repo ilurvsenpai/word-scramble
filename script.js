@@ -1,18 +1,19 @@
 // -------------------------------
-// Word Scramble Game Script
-// Levels, unlimited words, instant start, progress bar
+// Word Scramble Game - Full Updated Script
+// Unique words, level progression, progress bar, unlimited words
 // -------------------------------
 
 let currentWord = "";
 let scrambledWord = "";
 let score = 0;
 let lives = 3;
-let level = "easy";          
-let correctInLevel = 0;      
+let level = "easy";
+let correctInLevel = 0;
 let timer;
 let timeLeft = 10;
 let timerStarted = false;
-let usedWords = [];
+
+let usedWordsAllLevels = []; // tracks all used words globally
 let wordQueue = [];
 const WORD_BATCH_SIZE = 15;
 
@@ -35,11 +36,11 @@ function shuffle(word) {
 
 // -------------------------------
 // Update UI
-function updateUI(msg = "") {
+function updateUI(msg="") {
   document.getElementById("score").textContent = "⭐ " + score;
   document.getElementById("lives").textContent = "❤️ " + lives;
   if(msg) document.getElementById("message").textContent = msg;
-  else document.getElementById("message").textContent = `Guess the word!`;
+  else document.getElementById("message").textContent = "Guess the word!";
   updateLevelBar();
 }
 
@@ -49,21 +50,17 @@ function updateLevelBar() {
   const levelText = document.getElementById("levelText");
   const levelBar = document.getElementById("levelBar");
 
-  // Text
   levelText.textContent = `Level: ${level.toUpperCase()} | Correct: ${correctInLevel}/5`;
-
-  // Width percentage
   const percent = (correctInLevel / 5) * 100;
   levelBar.style.width = percent + "%";
 
-  // Color based on level
-  if(level === "easy") levelBar.style.background = "#4CAF50"; // green
-  else if(level === "medium") levelBar.style.background = "#FFA500"; // orange
-  else if(level === "hard") levelBar.style.background = "#FF4500"; // red
+  if(level === "easy") levelBar.style.background = "#4CAF50";
+  else if(level === "medium") levelBar.style.background = "#FFA500";
+  else if(level === "hard") levelBar.style.background = "#FF4500";
 }
 
 // -------------------------------
-// Preload words in parallel
+// Preload words without repeats
 async function preloadWords(level) {
   const minLen = level === "easy" ? 3 : level === "medium" ? 6 : 9;
   const maxLen = level === "easy" ? 5 : level === "medium" ? 8 : 20;
@@ -73,22 +70,21 @@ async function preloadWords(level) {
     const data = await res.json();
     data.forEach(word => {
       word = word.toLowerCase();
-      if(/^[a-z]+$/.test(word) && word.length >= minLen && word.length <= maxLen && !usedWords.includes(word)) {
+      if(/^[a-z]+$/.test(word) && word.length >= minLen && word.length <= maxLen && !usedWordsAllLevels.includes(word)) {
         wordQueue.push(word);
       }
     });
   } catch {
     for(let i=0;i<WORD_BATCH_SIZE;i++){
       const fallback = fallbackWords[level][Math.floor(Math.random()*fallbackWords[level].length)];
-      wordQueue.push(fallback);
+      if(!usedWordsAllLevels.includes(fallback)) wordQueue.push(fallback);
     }
   }
 
+  // Fallback if queue is empty
   if(wordQueue.length === 0){
-    for(let i=0;i<WORD_BATCH_SIZE;i++){
-      const fallback = fallbackWords[level][Math.floor(Math.random()*fallbackWords[level].length)];
-      wordQueue.push(fallback);
-    }
+    const options = fallbackWords[level].filter(w => !usedWordsAllLevels.includes(w));
+    if(options.length > 0) wordQueue.push(options[Math.floor(Math.random()*options.length)]);
   }
 }
 
@@ -102,13 +98,23 @@ async function newWord() {
   wordDisplay.textContent = "Loading...";
   wordDisplay.classList.add("loading");
 
-  // If queue empty, preload
-  if(wordQueue.length === 0) preloadWords(level);
+  // Preload if low
+  if(wordQueue.length < 3) await preloadWords(level);
 
-  // Use fallback immediately if queue empty
-  let word = wordQueue.length > 0 ? wordQueue.shift() : fallbackWords[level][Math.floor(Math.random()*fallbackWords[level].length)];
+  let word;
+  do {
+    word = wordQueue.shift();
+    if(!word) break;
+  } while(usedWordsAllLevels.includes(word));
+
+  // Fallback if still empty
+  if(!word){
+    const options = fallbackWords[level].filter(w => !usedWordsAllLevels.includes(w));
+    word = options[Math.floor(Math.random()*options.length)];
+  }
+
   currentWord = word;
-  usedWords.push(word);
+  usedWordsAllLevels.push(word);
   scrambledWord = shuffle(currentWord);
 
   wordDisplay.textContent = scrambledWord;
@@ -118,9 +124,6 @@ async function newWord() {
   input.value = "";
   input.disabled = false;
   input.focus();
-
-  // Refill queue in background if low
-  if(wordQueue.length < 5) preloadWords(level);
 
   startTimer();
   updateUI();
@@ -134,14 +137,14 @@ function startTimer() {
   timeLeft = level === "easy" ? 12 : level === "hard" ? 8 : 10;
   document.getElementById("timer").textContent = "⏱ " + timeLeft;
 
-  timer = setInterval(() => {
+  timer = setInterval(()=>{
     timeLeft--;
     document.getElementById("timer").textContent = "⏱ " + timeLeft;
     if(timeLeft <= 0){
       clearInterval(timer);
       loseLife("⏰ Time's up!");
     }
-  }, 1000);
+  },1000);
 }
 
 // -------------------------------
@@ -155,29 +158,28 @@ function checkGuess() {
     score++;
     correctInLevel++;
     updateUI();
-    updateLevelBar();
 
     if(correctInLevel >= 5){
       if(level === "easy") level = "medium";
       else if(level === "medium") level = "hard";
       correctInLevel = 0;
       updateUI(`🎉 Level Up! Now ${level.toUpperCase()}`);
-      updateLevelBar();
     }
 
     setTimeout(newWord, 500);
   } else {
     input.classList.add("shake");
-    setTimeout(()=>input.classList.remove("shake"), 300);
+    setTimeout(()=>input.classList.remove("shake"),300);
     loseLife("❌ Wrong!");
   }
 
   input.value = "";
+  updateLevelBar();
 }
 
 // -------------------------------
 // Lose life
-function loseLife(msg) {
+function loseLife(msg){
   lives--;
   updateUI(msg);
   if(lives <= 0) showGameOver();
@@ -186,12 +188,12 @@ function loseLife(msg) {
 
 // -------------------------------
 // Reset game
-function resetGame() {
+function resetGame(){
   score = 0;
   lives = 3;
   level = "easy";
   correctInLevel = 0;
-  usedWords = [];
+  usedWordsAllLevels = [];
   wordQueue = [];
   updateUI();
   updateLevelBar();
@@ -200,7 +202,7 @@ function resetGame() {
 
 // -------------------------------
 // Restart game
-function restartGame() {
+function restartGame(){
   const overlay = document.querySelector(".popup-overlay");
   if(overlay) document.body.removeChild(overlay);
 
@@ -212,7 +214,7 @@ function restartGame() {
 
 // -------------------------------
 // Game over popup
-function showGameOver() {
+function showGameOver(){
   clearInterval(timer);
   const input = document.getElementById("guessInput");
   input.disabled = true;
@@ -242,11 +244,11 @@ function showGameOver() {
 
 // -------------------------------
 // Event listeners
-document.getElementById("guessInput").addEventListener("input", () => {
+document.getElementById("guessInput").addEventListener("input", ()=>{
   if(!timerStarted) startTimer();
 });
 
-document.addEventListener("keydown", (e) => {
+document.addEventListener("keydown",(e)=>{
   if(e.key === "Enter"){
     const overlay = document.querySelector(".popup-overlay");
     if(overlay) restartGame();
@@ -254,7 +256,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-document.addEventListener("visibilitychange", () => {
+document.addEventListener("visibilitychange",()=>{
   if(document.hidden) clearInterval(timer);
   else if(timerStarted) startTimer();
 });
@@ -267,7 +269,7 @@ function toggleTheme(){
 // Confetti
 function launchConfetti(){
   const duration = 2000;
-  const end = Date.now() + duration;
+  const end = Date.now()+duration;
   const colors = ['#ffce00','#ff6f61','#6a5acd','#00ced1'];
 
   (function frame(){
